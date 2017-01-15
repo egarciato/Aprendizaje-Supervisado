@@ -1,0 +1,198 @@
+---
+title: "AprendizajeSupervisadoObligatoria_EGT"
+author: "Elena Garcia Torres"
+date: "8 de enero de 2017"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# INDICE
+* 1. Enunciado
+* 2. Carga y preparación de datos de sonar
+* 3. Clasificador K-NN (ten fold cross-validation)
+* 4. Clasificador C-SVM con kernel linear (ten fold cross-validation)
+* 5. Clasificador C-SVM con kernel no lineal RBF (ten fold cross-validation)
+* 6. Random Forest (ten fold cross-validation)
+* 7. Voluntario: Repetir los ejercicios anteriores pero utilizando como medida de error el área bajo la curva ROC
+* 8. Voluntario: Comparar los diferentes modelos y hacer una recomendación, si es posible, para esta aplicación.
+
+## 1. Enunciado
+1. Obligatoria: Para los datos de Sonar proporcionados por la librería mlbench realizar las siguientes tareas:
+* Para el clasificador k-NN, obtener el porcentaje de error y el índice kappa utilizando ten fold cross-validation. Determinar el valor de k óptimo.
+* Para el clasificador C-SVM con kernel lineal, obtener el porcentaje de error y el
+índice kappa utilizando ten fold cross-validation. Determinar el valor óptimo para
+el parámetro C.
+* Repetir el proceso anterior pero utilizando kernel no lineal RBF. Obtener los parámetros óptimos. ¿Qué podrías comentar?
+* Para el clasificador Random Forest, obtener el porcentaje de error y el índice kappa utilizando ten fold cross-validation. Comentar el resultado y compararlo con los anteriores.
+* Voluntario: Repetir los ejercicios anteriores pero utilizando como medida de error el área bajo la curva ROC. Comentar los resultados.
+* Voluntario: Comparar los diferentes modelos y hacer una recomendación, si es posible, para esta aplicación.
+
+## 2. Carga y preparación de datos de sonar
+
+    # Se comprueba si las librerias están isntaladas y si no lo están, se instalan
+```{r librearias}
+
+libs <- c("ggplot2","lattice","caret", "dplyr", "mlbench", "ipred","knitr", "kernlab", "randomForest", "rpart")
+  
+  for (i in libs){
+    print(i)
+    if(!require(i, character.only = TRUE)) { install.packages(i); library(i) }
+  }
+   
+```
+
+    ```{r cargaDatos}
+    # se asigna seed para no tener valores aleatorios
+    cte.seed <- 1234
+    
+    # se cargan los datos de "Sonar"
+    data(Sonar)
+    Sonar[1:2, ]
+    
+    # Se crean las particiones de entrenamiento y test
+    index.train.sonar <- createDataPartition(Sonar[,61], p=0.8, list=F)
+    
+    train.sonar <- Sonar[index.train.sonar,]
+    train.sonar [1:2,]
+    
+    test.sonar <- Sonar[ -index.train.sonar, ]
+    test.sonar [1:2,]
+    
+    # Se comprueba si las dimensiones son congruentes
+    dim(index.train.sonar)
+    dim(train.sonar)
+    dim(test.sonar)
+    
+    # Las proporciones se mantienen
+    prop.table( table(Sonar[,61]))
+    prop.table( table(train.sonar[,61]))
+    prop.table( table(test.sonar[,61]))
+ 
+    ```
+ 
+## 3. Clasificador K-NN (ten fold cross-validation)
+ 
+```{r Knn}
+ 
+    set.seed (cte.seed)
+     
+     # se usa la funcion "train" para construir el modelo K-NN
+     Knn.sonar <- train(Class ~ ., data = train.sonar, method = "knn", tuneLength = 10, preProc = c("center", "scale"))
+       
+     Knn.sonar
+     
+   # Variacion cruzada, trainControl
+    ctrl <- trainControl(method = "repeatedcv", repeats = 5)
+    Knn.sonar.ctrl <- train(Class ~ ., data = train.sonar, method = "knn", tuneLength = 10, trControl = ctrl, preProc = c("center", "scale"))
+    Knn.sonar.ctrl
+    
+    plot(Knn.sonar.ctrl)
+    plot( Knn.sonar.ctrl, metric="Kappa")
+    
+    # Predicción
+    Knn.sonar.predict <- predict(Knn.sonar.ctrl, newdata = test.sonar )
+    
+    # La eval del modelo se hace o por la matriz de confsion o tabla de contigencia y por la matrix RO
+    confusionMatrix(Knn.sonar.predict, test.sonar$Class )
+    
+    ```
+
+## 4. Clasificador C-SVM con kernel lineal (ten fold cross-validation)
+```{r SVM Lineal}
+set.seed(cte.seed)
+ svm.sonar.ctrl <- trainControl(method="repeatedcv", repeats=5)
+ svm.sonar.lineal <- train (Class ~ ., data = train.sonar, method = "svmLinear", tuneLength = 10, trControl = svm.sonar.ctrl)
+ 
+ svm.sonar.lineal
+ 
+ svm.sonar.lineal.predict <- predict(svm.sonar.lineal, test.sonar, "raw")
+ 
+ confusionMatrix(svm.sonar.lineal.predict, test.sonar$Class)
+ 
+``` 
+
+## 5. Clasificador C-SVM con kernel no lineal RBF (ten fold cross-validation)
+
+```{r RBF}
+ set.seed(cte.seed)
+ svmR.sonar.ctrl <- trainControl(method="repeatedcv", repeats=5)
+ svmR.sonar.radial <- train (Class ~ ., data = train.sonar, method = "svmRadial", tuneLength = 10, trControl = svmR.sonar.ctrl)
+ svmR.sonar.radial
+ plot (svmR.sonar.radial)
+ plot (svmR.sonar.radial, metric="Kappa")
+ 
+ radial.predict <- predict(svmR.sonar.radial, test.sonar, "raw")
+confusionMatrix(radial.predict, test.sonar$Class)
+
+```
+
+## 6. Random Forest (ten fold cross-validation)
+```{r Randomforest}
+ set.seed(cte.seed)
+ rf.sonar.ctrl <- trainControl(method="repeatedcv", repeats=5)
+ rf.sonar <- train (Class ~ ., data = train.sonar, method = "rf", tuneLength = 10, trControl = rf.sonar.ctrl)
+ rf.sonar
+ plot (rf.sonar)
+ plot (rf.sonar, metric="Kappa")
+ 
+ predictions.randomforest <- predict(rf.sonar, test.sonar, "raw")
+confusionMatrix(predictions.randomforest, test.sonar$Class)
+
+```
+## 7. Voluntario: Repetir los ejercicios anteriores pero utilizando como medida de error el área bajo la curva ROC.
+   ### Si queremos seleccionar el modelo utilizando las curvas ROC
+### 7.1. K-NN
+
+```{r knn ROC}
+set.seed (cte.seed)
+knn.sonar.control.roc <- trainControl(method="repeatedcv", repeats=5, classProbs=T, summaryFunction= twoClassSummary )
+knn.sonar.roc <- train(Class ~ ., data = train.sonar, method = "knn", tuneLength = 10, trControl=knn.sonar.control.roc, metric="ROC")
+plot(knn.sonar.roc)
+
+```
+
+### 7.2. C-SVM Kernel Lineal
+
+```{r SVM Kernel Lineal ROC}
+set.seed (cte.seed)
+svm.sonar.control.roc <- trainControl(method="repeatedcv", repeats=5, classProbs=T, summaryFunction= twoClassSummary )
+svm.sonar.roc <- train(Class ~ ., data = train.sonar, method = "svmLinear", tuneLength = 10, trControl=svm.sonar.control.roc, metric="ROC")
+svm.sonar.roc
+
+```
+### 7.3. C-SVM Kernel No Lineal
+```{r SVM Kernel No Lineal_ROC}
+set.seed (cte.seed)
+svmR.sonar.control.roc <- trainControl(method="repeatedcv", repeats=5, classProbs=T, summaryFunction= twoClassSummary )
+svmR.sonar.roc <- train(Class ~ ., data = train.sonar, method = "svmRadial", tuneLength = 10, trControl=svmR.sonar.control.roc, metric="ROC")
+plot (svmR.sonar.roc)
+
+```
+### 7.4. Random Forest
+```{r SVM Kernel No Lineal ROC}
+set.seed (cte.seed)
+rf.sonar.control.roc <- trainControl(method="repeatedcv", repeats=5, classProbs=T, summaryFunction= twoClassSummary )
+rf.sonar.roc <- train(Class ~ ., data = train.sonar, method = "rf", tuneLength = 10, trControl=rf.sonar.control.roc, metric="ROC")
+plot (rf.sonar.roc)
+
+```
+## 8. Voluntario: Comparar los diferentes modelos y hacer una recomendación, si es posible, para esta aplicación.
+
+```{r CompararModelos}
+
+models <- list(Knn.sonar.ctrl, svm.sonar.lineal, svmR.sonar.radial, rf.sonar)
+
+cv.samples <- resamples(models)
+summary( cv.samples)
+
+# Visualización resultados comparación
+
+dotplot( cv.samples)
+
+```
+
