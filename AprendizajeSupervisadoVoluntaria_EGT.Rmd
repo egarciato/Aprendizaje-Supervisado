@@ -1,0 +1,184 @@
+---
+title: "AprendizajeSupervisadoVoluntaria_EGT"
+author: "Elena Garcia Torres"
+date: "8 de enero de 2017"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# INDICE
+* 1. Enunciado
+* 2. Filtrar el número de variables de entrada
+* 3. Clasificador K-NN (ten fold cross-validation)
+* 4. Clasificador C-SVM con kernel linear (ten fold cross-validation)
+* 5. Clasificador C-SVM con kernel no lineal RBF (ten fold cross-validation)
+* 6. Random Forest (ten fold cross-validation)
+* 7. Proyectar Datos (PCA)
+* 8. Comparar los diferentes modelos
+
+## 1. Enunciado
+Para los datos de Spam proporcionados en el moodle realizar las siguientes
+tareas:
+* Filtrar el número de variables de entrada. Identificar las palabras y símbolos que tienen mayor relevancia para la clasificación de Spam.
+* Para el clasificador k-NN, obtener el porcentaje de error y el índice kappa utilizando ten fold cross-validation. Determinar el valor de k óptimo. ¿ Qué ventajas e inconvenientes tiene este clasificador ?
+* Para el clasificador C-SVM con kernel lineal, obtener el porcentaje de error y el
+índice kappa utilizando ten fold cross-validation. Determinar el valor óptimo para
+el parámetro C. ¿ Qué podría comentar sobre la eficiencia computacional ? ¿ Y
+sobre la capacidad de generalización ?
+* Repetir el proceso anterior pero utilizando kernel no lineal RBF. Obtener los parámetros óptimos. ¿ Qué podría comentar ?
+* Para el clasificador Random Forest, obtener el porcentaje de error y el índice kappa utilizando ten fold cross-validation. Comentar el resultado y compararlo con los anteriores.
+* Proyectar los datos sobre un subespacio de dimensión menor utilizando PCA. ¿Cuántas componentes principales se deben calcular ? Comparar los resultados con
+los obtenidos en puntos anteriores.
+* Comparar los diferentes modelos y determinar cuáles serían los mejores en esta
+aplicación atendiendo a índice de error y eficiencia computacional.
+
+## 2. Filtrar el número de variables de entrada
+
+    # Se comprueba si las librerias están isntaladas y si no lo están, se instalan
+```{r }
+currentDir <- getwd()
+
+libs <- c("tm", "NLP", "kernlab", "caret", "ggplot2", "randomForest", "lattice")
+  for (i in libs){
+    print(i)
+    if(!require(i, character.only = TRUE)) { install.packages(i); library(i) }
+  }
+
+data(spam)
+
+# se asigna seed para no tener valores aleatorios
+cte.seed <- 1234
+
+set.seed(cte.seed)
+spam.traintest = rbinom(4601, size = 1, prob = 0.5)
+table(spam.traintest)
+
+train.Spam = spam[spam.traintest == 1, ]
+test.Spam = spam[spam.traintest == 0, ]
+
+table(train.Spam$type)
+table(test.Spam$type)
+
+# Se comprueba si las dimensiones son congruentes
+dim(train.Spam)
+dim(test.Spam)
+    
+# Las proporciones se mantienen
+prop.table( table(spam$type))
+prop.table( table(train.Spam$type))
+prop.table( table(test.Spam$type))
+ 
+#Identificar las palabras y símbolos que tienen mayor relevancia para la clasificación de Spam
+
+```
+## 3. Clasificador K-NN (ten fold cross-validation)
+ 
+```{r Knn}
+ 
+    set.seed (cte.seed)
+     
+     # se usa la funcion "train" para construir el modelo K-NN
+     Knn.spam <- train(type ~ ., data = train.Spam, method = "knn", tuneLength = 10, preProc = c("center", "scale"))
+       
+     Knn.spam
+     
+   # Variacion cruzada, trainControl
+    ctrl <- trainControl(method = "repeatedcv", repeats = 5)
+    Knn.spam.ctrl <- train(type ~ ., data = train.Spam, method = "knn", tuneLength = 10, trControl = ctrl, preProc = c("center", "scale"))
+    Knn.spam.ctrl
+    
+    plot(Knn.spam.ctrl)
+    plot( Knn.spam.ctrl, metric="Kappa")
+    
+    # Predicción
+    Knn.spam.predict <- predict(Knn.spam.ctrl, newdata = test.Spam )
+    
+    # La eval del modelo se hace o por la matriz de confsion o tabla de contigencia y por la matrix RO
+    confusionMatrix(Knn.spam.predict, test.Spam$type )
+    
+    ```
+
+## 4. Clasificador C-SVM con kernel lineal (ten fold cross-validation)
+```{r SVM Lineal}
+set.seed(cte.seed)
+ svm.spam.ctrl <- trainControl(method="repeatedcv", repeats=5)
+ svm.spam.lineal <- train (type ~ ., data = train.Spam, method = "svmLinear", tuneLength = 10, trControl = svm.spam.ctrl)
+ 
+ svm.spam.lineal
+ 
+ svm.spam.lineal.predict <- predict(svm.spam.lineal, test.Spam, "raw")
+ 
+ confusionMatrix(svm.spam.lineal.predict, test.Spam$type)
+ 
+``` 
+
+## 5. Clasificador C-SVM con kernel no lineal RBF (ten fold cross-validation)
+
+```{r RBF}
+ set.seed(cte.seed)
+ svmR.spam.ctrl <- trainControl(method="repeatedcv", repeats=5)
+ svmR.spam.radial <- train (type ~ ., data = train.Spam, method = "svmRadial", tuneLength = 10, trControl = svmR.spam.ctrl)
+ svmR.spam.radial
+ plot (svmR.spam.radial)
+ plot (svmR.spam.radial, metric="Kappa")
+ 
+ radial.predict <- predict(svmR.spam.radial, test.Spam, "raw")
+ confusionMatrix(radial.predict, test.Spam$type)
+
+```
+
+## 6. Random Forest (ten fold cross-validation)
+```{r Randomforest}
+ set.seed(cte.seed)
+ rf.spam.ctrl <- trainControl(method="repeatedcv", repeats=5)
+ rf.spam <- train (type ~ ., data = train.Spam, method = "rf", tuneLength = 10, trControl = rf.spam.ctrl)
+ rf.spam
+ plot (rf.spam)
+ plot (rf.spam, metric="Kappa")
+ 
+ predictions.randomforest <- predict(rf.spam, test.Spam, "raw")
+confusionMatrix(predictions.randomforest, test.Spam$type)
+
+```
+## 7. Proyectar Datos (PCA)
+   
+```{r PCA}
+
+set.seed (cte.seed)
+M <- abs(cor(train.Spam[,-58]))
+
+diag(M) <- 0
+
+#selección alta correlación
+which(M > 0.8, arr.ind=TRUE)
+
+names(spam)[c(34,32)]
+plot(spam[,34], spam[,32])
+
+# PCA
+Spam.Reducido <- spam[,c(34,32)]
+Spam.pca <- prcomp(Spam.Reducido)
+plot(Spam.pca$x[,1], Spam.pca$x[,2])
+Spam.pca$rotation
+
+```
+## 8. Comparar los diferentes modelos
+
+```{r CompararModelos}
+
+models <- list(Knn.spam.ctrl, svm.spam.lineal, svmR.spam.radial, rf.spam)
+
+cv.samples <- resamples(models)
+summary( cv.samples)
+
+# Visualización resultados comparación
+
+dotplot( cv.samples)
+
+```
+
