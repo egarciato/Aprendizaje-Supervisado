@@ -1,0 +1,10 @@
+Para los datos de Spam proporcionados en el moodle realizar las siguientes tareas:
+* Filtrar el número de variables de entrada. Identificar las palabras y símbolos que tienen mayor relevancia para la clasificación de Spam.
+* Para el clasificador k-NN, obtener el porcentaje de error y el índice kappa utilizando ten fold cross-validation. Determinar el valor de k óptimo. ¿ Qué ventajas e inconvenientes tiene este clasificador ?
+* Para el clasificador C-SVM con kernel lineal, obtener el porcentaje de error y el índice kappa utilizando ten fold cross-validation. Determinar el valor óptimo para
+el parámetro C. ¿ Qué podría comentar sobre la eficiencia computacional ? ¿ Y sobre la capacidad de generalización ?
+* Repetir el proceso anterior pero utilizando kernel no lineal RBF. Obtener los parámetros óptimos. ¿ Qué podría comentar ?
+* Para el clasificador Random Forest, obtener el porcentaje de error y el índice kappa utilizando ten fold cross-validation. Comentar el resultado y compararlo con los anteriores.
+* Proyectar los datos sobre un subespacio de dimensión menor utilizando PCA. ¿Cuántas componentes principales se deben calcular ? Comparar los resultados con
+los obtenidos en puntos anteriores.
+* Comparar los diferentes modelos y determinar cuáles serían los mejores en esta aplicación atendiendo a índice de error y eficiencia computacional.
